@@ -1,9 +1,15 @@
 name: Deployment pipeline
 
+env:
+  SKIP: ${{ contains(join(toJson(github.event.commits.*.message)), '#skip') }}
+
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
 
 jobs:
   simple_deployment_pipeline:
@@ -20,6 +26,13 @@ jobs:
         run: npm run eslint
       - name: build
         run: npm run build
+      - name: build failed
+        if: ${{ failure() }}
+        uses: rjstone/discord-webhook-notify@v2
+        with:
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+          severity: error
+          details: Build failed.
       - name: test
         run: npm run test
       - name: e2e tests
@@ -29,6 +42,25 @@ jobs:
           start: npm run start-prod
           wait-on: http://localhost:5000
       - name: deploy
+        if: ${{ github.event_name == 'push' && env.SKIP == 'false' }}
         run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: deploy success
+        if: ${{ github.event_name == 'push' && env.SKIP == 'false' && success() }}
+        uses: rjstone/discord-webhook-notify@v2
+        with:
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+          severity: info
+          details: A new version of Pokedex deployed.
+  tag_release:
+    needs: [simple_deployment_pipeline]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bump version and push tag
+        if: ${{ github.event_name == 'push' && env.SKIP == 'false' }}
+        uses: anothrNick/github-tag-action@1.75.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: 'patch'
