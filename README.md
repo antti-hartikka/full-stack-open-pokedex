@@ -14,6 +14,10 @@ Start by running `npm install` inside the project folder
 `npm run build` to make a production build
 `npm run start-prod` to run your production build
 
-## Link to repo in 11.20
+## Link to the deployed app
+
+https://full-stack-open-pokedex-little-frog-754.fly.dev/
+
+## Link to the repo in ex. 11.20
 
 https://github.com/antti-hartikka/phonebook-app
